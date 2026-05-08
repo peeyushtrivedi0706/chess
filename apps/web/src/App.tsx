@@ -8,9 +8,47 @@ import GamePage from './pages/GamePage';
 import HistoryPage from './pages/HistoryPage';
 import ProfilePage from './pages/ProfilePage';
 
-function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+/**
+ * ProtectedRoute
+ * Waits for the auth bootstrap to finish before deciding whether to render
+ * the protected content or redirect to /login.  This prevents a flash-redirect
+ * when the app reloads with a valid token stored in localStorage.
+ */
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    // Minimal loading state — replace with a spinner component if desired
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100vh',
+          fontFamily: 'sans-serif',
+          fontSize: '1.2rem',
+          color: '#555',
+        }}
+      >
+        Loading…
+      </div>
+    );
+  }
+
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+}
+
+/**
+ * PublicOnlyRoute
+ * Redirects already-authenticated users away from login / register pages.
+ */
+function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) return null;
+
+  return isAuthenticated ? <Navigate to="/" replace /> : <>{children}</>;
 }
 
 export default function App() {
@@ -18,40 +56,59 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          {/* Public-only routes */}
+          <Route
+            path="/login"
+            element={
+              <PublicOnlyRoute>
+                <LoginPage />
+              </PublicOnlyRoute>
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <PublicOnlyRoute>
+                <RegisterPage />
+              </PublicOnlyRoute>
+            }
+          />
+
+          {/* Protected routes */}
           <Route
             path="/"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <DashboardPage />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/game/:gameId"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <GamePage />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/history"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <HistoryPage />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/profile"
             element={
-              <PrivateRoute>
+              <ProtectedRoute>
                 <ProfilePage />
-              </PrivateRoute>
+              </ProtectedRoute>
             }
           />
+
+          {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
